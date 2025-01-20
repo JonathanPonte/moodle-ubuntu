@@ -1,0 +1,22 @@
+FROM natashaqfs/template-moodle-alpine:v1
+
+# Copiando moodle, e renomeando pasta
+COPY . /ava
+RUN mv /var/www/localhost/htdocs/moodle /var/www/localhost/htdocs/ava
+
+# Copiando os plugins customizados
+RUN cp -a /ava/config-dev.php /var/www/localhost/htdocs/ava/config.php \
+    && cp -a /ava/lang /var/www/localhost/htdocs/ava/ 
+
+# Removendo lixo
+RUN rm -fr /ava
+
+RUN sed -i 's/upload_max_filesize = 120M/upload_max_filesize = 8000M/' /etc/php82/php.ini \
+    && sed -i 's/post_max_size = 120M/post_max_size = 8000M/' /etc/php82/php.ini \
+    && sed -i 's/memory_limit = 256M/memory_limit = 512M/' /etc/php82/php.ini
+
+# Iniciando o container
+CMD printf "###CONFIG###\n" && cat /var/www/localhost/htdocs/ava/config.php \
+    && mkdir /run/openrc/ && touch /run/openrc/softlevel && openrc \
+    && /etc/init.d/apache2 start \
+    && /startup.sh

@@ -1,0 +1,118 @@
+# moodle-template-alpine-3.21.0_m4.4.0:v1
+# docker tag moodle-template-alpine:3.21.0 natasha/moodle-template-alpine:3.21.0
+# docker push natashqfs/moodle-template-alpine:3.21.0
+
+FROM alpine:3.21.0
+
+RUN apk update && apk add --no-cache \
+    apache2 openrc \
+    php82 \
+    php82-apache2 \
+    php82-cli \
+    php82-common \
+    php82-ctype \
+    php82-curl \
+    php82-dom \
+    php82-gd \
+    php82-iconv \
+    php82-intl \
+    php82-json \
+    php82-mbstring \
+    php82-opcache \
+    php82-pdo \
+    php82-xml \
+    php82-zip \
+    php82-mysqli \
+    php82-session \
+    php82-tokenizer \
+    php82-fileinfo \
+    php82-openssl \
+    php82-xmlreader \
+    php82-xmlwriter \
+    php82-xsl \
+    php82-soap \
+    php82-sodium \
+    php82-exif \
+    php82-simplexml \
+    php82-pecl-memcached \
+    php82-pecl-redis \
+    php82-pecl-msgpack \
+    php82-pear \
+    php82-pecl-yaml \
+    php82-dev \
+    php82-posix \
+    php82-tidy \
+    php82-pspell \
+    php82-phar \
+    php82-odbc \
+    php82-bz2 \
+    php82-bcmath \
+    php82-pecl-igbinary \
+    mariadb-client \
+    ghostscript \
+    icu-data-full \
+    unzip \
+    vim
+
+RUN rm -fr /var/www/localhost/htdocs/index.html && \
+    mkdir -p /var/moodle_shared/moodledata && \
+    mkdir /moodle && \
+    chmod -R 777 /var/moodle_shared /tmp
+
+# Adjust Cron
+# Don't forget that configuration below:
+# $CFG->task_scheduled_concurrency_limit = 20;
+# $CFG->task_adhoc_concurrency_limit = 20;
+RUN echo '*/1     *       *       *       *       /usr/bin/php82  /var/www/localhost/htdocs/ava/admin/cli/cron.php' >> /etc/crontabs/root
+
+# Fix ErrorLogFormat remoteip: X-Forwarded-For
+RUN echo 'ErrorLogFormat "[%{u}t] [%-m:%l] [pid %P] %7F: %E: [client\ %a] [%{X-Forwarded-For}i] %M% ,\ referer\ %{Referer}i"' >> /etc/apache2/httpd.conf
+
+#Remove Indexes FollowSymLinks do apache
+RUN sed -i 's/Options Indexes FollowSymLinks/#Options Indexes FollowSymLinks/g' /etc/apache2/httpd.conf
+RUN echo "max_input_vars = 5000" >> /etc/php82/php.ini
+# Fix php.ini
+RUN sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 120M/' /etc/php82/php.ini \
+    && sed -i 's/post_max_size = 8M/post_max_size = 120M/' /etc/php82/php.ini \
+    && sed -i 's/memory_limit = 128M/memory_limit = 256M/' /etc/php82/php.ini \
+    && sed -i 's/error_reporting = E_ALL \& ~E_DEPRECATED \& ~E_STRICT/error_reporting = E_ALL \& ~E_DEPRECATED \& ~E_STRICT \& ~E_NOTICE/' /etc/php82/php.ini
+
+
+#Copiando moodle e extraindo usando o unzip
+COPY moodle-MOODLE_404_STABLE.zip /moodle
+RUN unzip /moodle/moodle-MOODLE_404_STABLE.zip -d /var/www/localhost/htdocs
+RUN mv /var/www/localhost/htdocs/moodle-MOODLE_404_STABLE /var/www/localhost/htdocs/moodle
+
+#Copiando startup.sh
+COPY startup.sh /startup.sh
+RUN chmod +x /startup.sh
+
+# Removendo lixo
+RUN rm -fr /var/www/localhost/htdocs/moodle/.[!.]* \
+   && rm -fr /var/www/localhost/htdocs/moodle/*.js \
+   && rm -fr /var/www/localhost/htdocs/moodle/*.json \
+   && rm -fr /var/www/localhost/htdocs/moodle/*.txt \
+   && rm -fr /var/www/localhost/htdocs/moodle/*.dist \
+   && rm -fr /var/www/localhost/htdocs/moodle/*.lock
+
+# Copiando moodle, e renomeando pasta
+COPY . /ava
+RUN mv /var/www/localhost/htdocs/moodle /var/www/localhost/htdocs/ava
+
+# Copiando os plugins customizados
+RUN cp -a /ava/config-dev.php /var/www/localhost/htdocs/ava/config.php \
+    && cp -a /ava/lang /var/www/localhost/htdocs/ava/ 
+
+# Removendo lixo
+RUN rm -fr /ava
+
+RUN sed -i 's/upload_max_filesize = 120M/upload_max_filesize = 8000M/' /etc/php82/php.ini \
+    && sed -i 's/post_max_size = 120M/post_max_size = 8000M/' /etc/php82/php.ini \
+    && sed -i 's/memory_limit = 256M/memory_limit = 512M/' /etc/php82/php.ini
+
+# Iniciando o container
+CMD printf "###CONFIG###\n" && cat /var/www/localhost/htdocs/ava/config.php \
+    && mkdir /run/openrc/ && touch /run/openrc/softlevel && openrc \
+    && /etc/init.d/apache2 start \
+    && /startup.sh
+

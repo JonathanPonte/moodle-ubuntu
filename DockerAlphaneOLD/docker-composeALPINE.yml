@@ -1,0 +1,45 @@
+version: "3.0"
+
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:8.0.40
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_DATABASE: moodle
+      MYSQL_USER: moodleuser
+      MYSQL_PASSWORD: moodlepassword
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./db/moodledb:/var/lib/mysql 
+  ava: 
+    container_name: moodle
+    image: moodle-template
+    # build: .
+    security_opt:
+      - label:disable
+    ports:
+      - "80:80"
+    restart: always
+    volumes:  
+      - ./db/install.sh:/db/install.sh:ro
+      - ./db/moodledata:/var/moodle_shared/moodledata
+    command: >
+      sh -c "
+        echo  '(01) Executando install.sh:'
+        cat /db/install.sh | dos2unix > /db/normalized.sh
+        chmod +x /db/normalized.sh
+        /db/normalized.sh
+        echo  '(03) Configurando openrc:'
+        mkdir /run/openrc/ && touch /run/openrc/softlevel && openrc
+        echo  '(04) Iniciando o apache2 no alpine:'
+        /etc/init.d/apache2 start
+        echo  '(05) Dando permissão ao moodledata'
+        chmod 777 /var/moodle_shared/moodledata
+        echo  '(06) Exibindo os logs:'
+        crond -l 8 -b > /dev/stdout 2> /dev/stderr &
+        tail -f /var/log/apache2/error.log  
+      "
