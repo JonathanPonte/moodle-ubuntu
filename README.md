@@ -37,11 +37,8 @@
 #### 29/03/2023 - **moodle-template-alpine-3.14.0**<br>
 - Imagem preparada para suportar o moodle 4.0, incluso tais pacotes: php7-simplexml php7-xmlreader php7-fileinfo php7-tokenizer php7-sodium php7-exif
 
-#### 25/07/2024 - **criando versão da unifor do moodle 
+#### 25/07/2024 - 
 - Comentando linha 103 no arquivo /var/www/localhost/htdocs/ava/admin/roles/classes/define_role_table_advanced.php para não limpar o valor do campo shortname ao salvar role.
-
-### Repositório Unifor
-nexus3.unifor.br:8080/unifor/
 
 ### Comandos uteis
 No próprio arquivo...
