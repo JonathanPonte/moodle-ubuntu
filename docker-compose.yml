@@ -29,7 +29,7 @@ services:
     volumes:
       - ./db/install.sh:/db/install.sh:ro
       - ./db/moodledata:/var/moodle_shared/moodledata
-      - ./custom_php.ini:/usr/local/etc/php/conf.d/custom_php.ini
+      - ./custom_php.ini:/etc/php/8.2/apache2/php.ini
     environment:
       DB_HOST: mysql
       DB_NAME: moodle
